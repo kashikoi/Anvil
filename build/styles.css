@@ -5,10 +5,10 @@
 
 /* ---------- Theme tokens ---------- */
 :root {
-  /* Storm / Dusk mode (default) */
-  --bg-0: #0f172a;
-  --bg-1: #1e293b;
-  --bg-2: #334155;
+  /* Night (default) — moonlit anvil over dark prairie */
+  --bg-0: #0b1120;
+  --bg-1: #131c30;
+  --bg-2: #1e293b;
   --ink: #f8fafc;
   --ink-soft: #cbd5e1;
   --ink-faint: #94a3b8;
@@ -19,16 +19,33 @@
 
   --accent-cool: #38bdf8;
 
-  --glass: rgba(30, 41, 59, 0.55);
-  --glass-strong: rgba(30, 41, 59, 0.78);
-  --glass-hi: rgba(255, 255, 255, 0.06);
+  /* Panels kept translucent so the scenic sky shows through */
+  --glass: rgba(15, 23, 42, 0.46);
+  --glass-strong: rgba(15, 23, 42, 0.74);
+  --glass-hi: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.12);
   --glass-border-strong: rgba(255, 255, 255, 0.2);
-  --shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.75);
+  --shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.8);
 
   --danger: #f87171;
   --amber-wash: rgba(245, 158, 11, 0.12);
   --amber-border: rgba(251, 191, 36, 0.4);
+
+  /* Scene colors */
+  --sky-top: #070b16;
+  --sky-mid: #111b31;
+  --sky-horizon: #2a3952;
+  --cloud-lit: #cbd5ec;
+  --cloud-mid: #8b97b4;
+  --cloud-shadow: #39435f;
+  --butte: #2b2638;
+  --butte-2: #191826;
+  --grass: #19222f;
+  --grass-fore: #0e141d;
+  --scene-haze: rgba(60, 78, 110, 0.55);
+  --star-opacity: 1;
+  --sun-opacity: 0;
+  --moon-opacity: 1;
 
   --radius: 16px;
   --radius-sm: 10px;
@@ -39,6 +56,39 @@
   --deck-w: 360px;
 }
 
+/* Twilight — golden dusk anvil, matches the prairie photo */
+html.twilight {
+  --bg-0: #1c2540;
+  --bg-1: #2a3357;
+  --bg-2: #3a4063;
+  --ink: #f8fafc;
+  --ink-soft: #dbe2f0;
+  --ink-faint: #aeb8d0;
+
+  --glass: rgba(26, 30, 54, 0.44);
+  --glass-strong: rgba(26, 30, 54, 0.72);
+  --glass-hi: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-border-strong: rgba(255, 255, 255, 0.26);
+  --shadow: 0 18px 50px -22px rgba(20, 12, 40, 0.6);
+
+  --sky-top: #243253;
+  --sky-mid: #50567f;
+  --sky-horizon: #edb07a;
+  --cloud-lit: #ffd9a6;
+  --cloud-mid: #e9b98e;
+  --cloud-shadow: #7c6f96;
+  --butte: #a4654b;
+  --butte-2: #6f4038;
+  --grass: #8a7c52;
+  --grass-fore: #4f5236;
+  --scene-haze: rgba(240, 170, 110, 0.32);
+  --star-opacity: 0.22;
+  --sun-opacity: 1;
+  --moon-opacity: 0;
+}
+
+/* Day — bright azure sky, sunlit white anvil, green prairie */
 html.day {
   --bg-0: #e0f2fe;
   --bg-1: #eff6ff;
@@ -53,16 +103,31 @@ html.day {
 
   --accent-cool: #0284c7;
 
-  --glass: rgba(255, 255, 255, 0.6);
+  --glass: rgba(255, 255, 255, 0.5);
   --glass-strong: rgba(255, 255, 255, 0.82);
-  --glass-hi: rgba(255, 255, 255, 0.5);
-  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-hi: rgba(255, 255, 255, 0.52);
+  --glass-border: rgba(255, 255, 255, 0.72);
   --glass-border-strong: rgba(148, 163, 184, 0.45);
-  --shadow: 0 18px 50px -24px rgba(30, 58, 95, 0.4);
+  --shadow: 0 18px 50px -24px rgba(30, 58, 95, 0.35);
 
   --danger: #dc2626;
-  --amber-wash: rgba(245, 158, 11, 0.14);
+  --amber-wash: rgba(245, 158, 11, 0.16);
   --amber-border: rgba(217, 119, 6, 0.4);
+
+  --sky-top: #3fa0dd;
+  --sky-mid: #8ad0f2;
+  --sky-horizon: #eaf7ff;
+  --cloud-lit: #ffffff;
+  --cloud-mid: #e6eef7;
+  --cloud-shadow: #b7c5d9;
+  --butte: #c67d58;
+  --butte-2: #9c5c41;
+  --grass: #8fae5f;
+  --grass-fore: #5f7e3f;
+  --scene-haze: rgba(255, 255, 255, 0.35);
+  --star-opacity: 0;
+  --sun-opacity: 1;
+  --moon-opacity: 0;
 }
 
 * { box-sizing: border-box; }
@@ -77,45 +142,89 @@ html, body {
 body {
   font-family: var(--font-ui);
   color: var(--ink);
-  background: linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 55%, var(--bg-2) 100%);
-  background-attachment: fixed;
+  background: var(--bg-0);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* ---------- Atmospheric backdrop ---------- */
-.atmosphere {
+/* ---------- Scenic backdrop: anvil cloud over prairie ---------- */
+.scenic-bg {
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
 }
-.atmosphere__glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.5;
-}
-.atmosphere__glow--a {
-  width: 520px; height: 520px;
-  top: -160px; right: -120px;
-  background: radial-gradient(circle, rgba(251, 191, 36, 0.35), transparent 70%);
-}
-.atmosphere__glow--b {
-  width: 480px; height: 480px;
-  bottom: -180px; left: -140px;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.22), transparent 70%);
-}
-.atmosphere__clouds {
+.scenic-sky {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(60% 40% at 20% 30%, rgba(255,255,255,0.05), transparent 70%),
-    radial-gradient(50% 35% at 80% 65%, rgba(255,255,255,0.04), transparent 70%);
+  background: linear-gradient(to bottom,
+    var(--sky-top) 0%,
+    var(--sky-mid) 46%,
+    var(--sky-horizon) 72%,
+    var(--sky-horizon) 100%);
+  transition: background 0.6s ease;
 }
-html.day .atmosphere__glow { opacity: 0.7; }
+.scenic-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.scenic-scene path,
+.scenic-scene ellipse,
+.scenic-scene circle,
+.scenic-scene rect { transition: fill 0.6s ease; }
+
+/* Twinkling stars (night, faint at twilight) */
+.scenic-stars {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 62%;
+  opacity: var(--star-opacity);
+  transition: opacity 0.6s ease;
+  background-image:
+    radial-gradient(1.4px 1.4px at 12% 18%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 28% 32%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 44% 12%, #fff, transparent),
+    radial-gradient(1px 1px at 58% 26%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 72% 16%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 84% 30%, #fff, transparent),
+    radial-gradient(1px 1px at 20% 44%, #fff, transparent),
+    radial-gradient(1.3px 1.3px at 66% 40%, #fff, transparent),
+    radial-gradient(1px 1px at 92% 22%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 38% 48%, #fff, transparent);
+  animation: twinkle 5s ease-in-out infinite alternate;
+}
+@keyframes twinkle { from { opacity: calc(var(--star-opacity) * 0.55); } to { opacity: var(--star-opacity); } }
+
+/* Sun / moon */
+.celestial {
+  position: absolute;
+  top: 12%; right: 16%;
+  width: 120px; height: 120px;
+  display: grid;
+  place-items: center;
+  transition: opacity 0.6s ease;
+}
+.celestial--sun { opacity: var(--sun-opacity); }
+.celestial--moon { opacity: var(--moon-opacity); }
+.celestial__glow {
+  position: absolute;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  filter: blur(26px);
+}
+.celestial__disc {
+  position: relative;
+  width: 86px; height: 86px;
+  border-radius: 50%;
+}
+.celestial--sun .celestial__glow { background: radial-gradient(circle, rgba(255,214,120,0.75), transparent 70%); }
+.celestial--sun .celestial__disc { background: radial-gradient(circle at 38% 34%, #fff6d8, #ffcf6b 55%, #f6a93a); box-shadow: 0 0 50px rgba(255,190,90,0.6); }
+.celestial--moon .celestial__glow { background: radial-gradient(circle, rgba(226,232,240,0.5), transparent 70%); }
+.celestial--moon .celestial__disc { background: radial-gradient(circle at 36% 32%, #ffffff, #dbe4f0 55%, #aab6c9); box-shadow: 0 0 36px rgba(203,213,236,0.5); }
 
 /* ---------- App shell (3-panel grid) ---------- */
 .shell {
@@ -139,6 +248,32 @@ html.day .atmosphere__glow { opacity: 0.7; }
   padding: 14px 20px 12px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.icon-btn {
+  width: 38px; height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.icon-btn:hover {
+  border-color: var(--glass-border-strong);
+  transform: translateY(-1px) rotate(30deg);
 }
 .crumb {
   display: flex;
@@ -219,8 +354,8 @@ html.day .atmosphere__glow { opacity: 0.7; }
 /* Shared glass surface */
 .rail, .deck, .canvas {
   background: var(--glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -255,6 +390,17 @@ html.day .atmosphere__glow { opacity: 0.7; }
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+.brand__version {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--beacon-bright);
+  -webkit-text-fill-color: var(--beacon-bright);
+  vertical-align: middle;
+  opacity: 0.85;
+}
+html.day .brand__version { color: var(--beacon); -webkit-text-fill-color: var(--beacon); }
 .brand__tagline {
   margin: 2px 0 0;
   font-size: 0.72rem;
@@ -502,11 +648,88 @@ html.day .tag-pill--sub .tag-pill__glyph { color: var(--beacon); }
 }
 
 .theme-toggle {
+  display: none;
+}
+
+/* ---------- Modals (settings / about) ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  padding: 20px;
+}
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 9, 18, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.modal__card {
+  position: relative;
   width: 100%;
+  max-width: 420px;
+  background: var(--glass-strong);
+  backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.modal__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.modal__close {
+  width: 32px; height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  line-height: 1;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-hi);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.modal__close:hover { border-color: var(--glass-border-strong); }
+
+.settings-content { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.settings-group { display: flex; flex-direction: column; gap: 8px; }
+.settings-divider { height: 1px; background: var(--glass-border); }
+.settings-row__label { font-weight: 700; font-size: 0.9rem; }
+.settings-row__desc { font-size: 0.78rem; color: var(--ink-faint); line-height: 1.4; }
+.settings-privacy {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  line-height: 1.4;
+}
+.settings-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.settings-actions .btn { flex: 1 1 auto; }
+
+.theme-picker {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+.theme-chip {
   padding: 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
@@ -518,8 +741,35 @@ html.day .tag-pill--sub .tag-pill__glyph { color: var(--beacon); }
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.theme-toggle:hover { border-color: var(--glass-border-strong); }
-.theme-toggle__icon { font-size: 1rem; }
+.theme-chip:hover { border-color: var(--glass-border-strong); transform: translateY(-1px); }
+.theme-chip.is-active {
+  border-color: var(--beacon);
+  background: var(--amber-wash);
+  color: var(--beacon-bright);
+  box-shadow: 0 0 0 1px var(--beacon) inset;
+}
+html.day .theme-chip.is-active { color: var(--beacon); }
+
+.about-content { padding: 18px; text-align: center; }
+.about-content__name {
+  margin: 4px 0 2px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.about-content__version {
+  margin: 0 0 12px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--beacon-bright);
+}
+html.day .about-content__version { color: var(--beacon); }
+.about-content__description {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
 
 /* ============ MIDDLE DECK ============ */
 .deck { padding: 16px; gap: 14px; }

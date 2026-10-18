@@ -8,7 +8,11 @@
 
   const STORE_KEY = "anvil_cloud_runbooks";
   const THEME_KEY = "anvil_cloud_theme";
+  const ACTIVE_THEME_KEY = "anvil_cloud_active_theme"; // sessionStorage, resolved random pick
   const CHECKS_KEY = "anvil_cloud_checks"; // sessionStorage, per-runbook step checks
+
+  const APP_VERSION = "2026.10.18.2";
+  const THEMES = ["day", "twilight", "night"];
 
   // ---------- In-memory state ----------
   let db = { workspaces: [], runbooks: [] };
@@ -617,17 +621,70 @@
     el.lightboxImg.src = "";
   }
 
-  // ---------- Theme ----------
-  function toggleTheme() {
-    const day = document.documentElement.classList.toggle("day");
-    localStorage.setItem(THEME_KEY, day ? "day" : "storm");
-    el.themeToggleLabel.textContent = day ? "Daylight" : "Storm";
-    el.themeToggle.querySelector(".theme-toggle__icon").textContent = day ? "☀️" : "⚡";
+  // ---------- Theme / atmosphere ----------
+  function getThemePref() {
+    let pref = localStorage.getItem(THEME_KEY);
+    if (pref === "storm") pref = "night"; // migrate legacy value
+    if (pref !== "day" && pref !== "twilight" && pref !== "night" && pref !== "random") {
+      pref = "night";
+    }
+    return pref;
   }
-  function initThemeLabel() {
-    const day = document.documentElement.classList.contains("day");
-    el.themeToggleLabel.textContent = day ? "Daylight" : "Storm";
-    el.themeToggle.querySelector(".theme-toggle__icon").textContent = day ? "☀️" : "⚡";
+  function resolveMode(pref) {
+    if (pref !== "random") return pref;
+    let active = sessionStorage.getItem(ACTIVE_THEME_KEY);
+    if (!THEMES.includes(active)) {
+      active = THEMES[Math.floor(Math.random() * THEMES.length)];
+      sessionStorage.setItem(ACTIVE_THEME_KEY, active);
+    }
+    return active;
+  }
+  function applyThemeClass(mode) {
+    const root = document.documentElement;
+    root.classList.remove("day", "twilight");
+    if (mode === "day") root.classList.add("day");
+    else if (mode === "twilight") root.classList.add("twilight");
+    // night = no class (default tokens)
+  }
+  function setTheme(pref) {
+    localStorage.setItem(THEME_KEY, pref);
+    if (pref === "random") {
+      // re-roll each explicit selection
+      const active = THEMES[Math.floor(Math.random() * THEMES.length)];
+      sessionStorage.setItem(ACTIVE_THEME_KEY, active);
+      applyThemeClass(active);
+    } else {
+      sessionStorage.removeItem(ACTIVE_THEME_KEY);
+      applyThemeClass(pref);
+    }
+    updateThemePicker();
+  }
+  function updateThemePicker() {
+    if (!el.themePicker) return;
+    const pref = getThemePref();
+    el.themePicker.querySelectorAll(".theme-chip").forEach(function (chip) {
+      chip.classList.toggle("is-active", chip.dataset.themeVal === pref);
+    });
+  }
+
+  // ---------- Settings / About modals ----------
+  function openSettings() {
+    updateThemePicker();
+    el.settingsModal.hidden = false;
+  }
+  function closeSettings() {
+    el.settingsModal.hidden = true;
+  }
+  function openAbout() {
+    closeSettings();
+    el.aboutModal.hidden = false;
+  }
+  function closeAbout() {
+    el.aboutModal.hidden = true;
+  }
+  function initVersion() {
+    if (el.appVersion) el.appVersion.textContent = "v" + APP_VERSION;
+    if (el.aboutVersion) el.aboutVersion.textContent = "Version " + APP_VERSION;
   }
 
   // ---------- Scope toggle ----------
@@ -803,8 +860,21 @@
     el.newWorkspaceBtn.addEventListener("click", addWorkspace);
     el.crumbHome.addEventListener("click", () => selectWorkspace(null));
 
-    el.themeToggle.addEventListener("click", toggleTheme);
     el.scopeToggle.addEventListener("click", toggleScope);
+
+    // Settings / About
+    el.settingsBtn.addEventListener("click", openSettings);
+    el.aboutBtn.addEventListener("click", openAbout);
+    el.themePicker.addEventListener("click", (e) => {
+      const chip = e.target.closest(".theme-chip");
+      if (chip) setTheme(chip.dataset.themeVal);
+    });
+    document.querySelectorAll("[data-close-settings]").forEach((n) =>
+      n.addEventListener("click", closeSettings)
+    );
+    document.querySelectorAll("[data-close-about]").forEach((n) =>
+      n.addEventListener("click", closeAbout)
+    );
 
     el.exportBtn.addEventListener("click", exportJSON);
     el.importBtn.addEventListener("click", () => el.importFile.click());
@@ -864,7 +934,9 @@
           saveEditor();
         }
       } else if (e.key === "Escape") {
-        if (!el.lightbox.hidden) closeLightbox();
+        if (!el.aboutModal.hidden) closeAbout();
+        else if (!el.settingsModal.hidden) closeSettings();
+        else if (!el.lightbox.hidden) closeLightbox();
         else if (isKiosk) toggleKiosk(false);
       }
     });
@@ -875,7 +947,8 @@
       "shell", "app", "topbar",
       "crumbHome", "wsCrumbBtn", "wsCrumbLabel", "wsCrumbMenu", "subCrumbBtn", "subCrumbLabel", "subCrumbMenu",
       "workspaceList", "allWorkspacesBtn", "allWsCount", "newWorkspaceBtn", "tagFilters",
-      "backupStatusText", "exportBtn", "importBtn", "importFile", "themeToggle", "themeToggleLabel",
+      "backupStatusText", "exportBtn", "importBtn", "importFile",
+      "settingsBtn", "settingsModal", "aboutModal", "themePicker", "appVersion", "aboutVersion", "aboutBtn",
       "searchInput", "scopeToggle", "newBtn", "deckCount", "deckList",
       "reader", "readerTitle", "readerVerified", "readerTimestamp", "readerTags",
       "toolsCallout", "toolsList", "stepsList", "resetChecksBtn", "gotchasCallout", "gotchasList",
@@ -891,7 +964,8 @@
     cacheEls();
     load();
     bind();
-    initThemeLabel();
+    initVersion();
+    updateThemePicker();
     renderAll();
     showEmpty();
   });
