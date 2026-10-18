@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Anvil</title>
+  <meta name="description" content="A local-first personal runbook and procedural how-to knowledge base." />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.10.18.1" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.10.18.1" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.10.18.1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="styles.css?v=2026.10.18.1" />
+  <script>
+    // Resolve theme before first paint to prevent flash of wrong theme.
+    try {
+      var pref = localStorage.getItem("anvil_cloud_theme") || "storm";
+      if (pref === "day") document.documentElement.classList.add("day");
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <!-- Ambient atmospheric backdrop -->
+  <div class="atmosphere" aria-hidden="true">
+    <div class="atmosphere__glow atmosphere__glow--a"></div>
+    <div class="atmosphere__glow atmosphere__glow--b"></div>
+    <div class="atmosphere__clouds"></div>
+  </div>
+
+  <div class="shell" id="shell">
+  <!-- ============ TOP BAR (Breadcrumb Switcher) ============ -->
+  <header class="topbar" id="topbar">
+    <nav class="crumb" aria-label="Breadcrumb">
+      <button type="button" class="crumb__home" id="crumbHome" title="Reset to all workspaces">ANVIL</button>
+      <span class="crumb__sep" aria-hidden="true">/</span>
+      <div class="crumb__drop" id="wsCrumb">
+        <button type="button" class="crumb__btn" id="wsCrumbBtn" aria-haspopup="true" aria-expanded="false">
+          <span id="wsCrumbLabel">All Workspaces</span>
+          <span class="crumb__caret" aria-hidden="true">&#9662;</span>
+        </button>
+        <ul class="crumb__menu" id="wsCrumbMenu" hidden></ul>
+      </div>
+      <span class="crumb__sep" aria-hidden="true">/</span>
+      <div class="crumb__drop" id="subCrumb">
+        <button type="button" class="crumb__btn" id="subCrumbBtn" aria-haspopup="true" aria-expanded="false">
+          <span id="subCrumbLabel">All Subsystems</span>
+          <span class="crumb__caret" aria-hidden="true">&#9662;</span>
+        </button>
+        <ul class="crumb__menu" id="subCrumbMenu" hidden></ul>
+      </div>
+    </nav>
+  </header>
+
+  <div class="app" id="app">
+    <!-- ============ LEFT SIDEBAR (Glass Rail) ============ -->
+    <aside class="rail" id="rail">
+      <header class="rail__brand">
+        <svg class="brand__emblem" viewBox="0 0 120 90" role="img" aria-label="Anvil cloud emblem">
+          <defs>
+            <linearGradient id="emblemCloud" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f8fafc" />
+              <stop offset="1" stop-color="#cbd5e1" />
+            </linearGradient>
+            <radialGradient id="emblemBeacon" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#fffbeb" />
+              <stop offset="45%" stop-color="#fbbf24" stop-opacity="0.85" />
+              <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="60" cy="30" r="34" fill="url(#emblemBeacon)" />
+          <path d="M 10 30 Q 30 12 58 20 Q 60 6 76 16 Q 100 10 112 30 Q 118 40 104 46 L 18 46 Q 4 40 10 30 Z" fill="url(#emblemCloud)" />
+          <path d="M 34 46 Q 26 66 44 78 Q 64 90 86 78 Q 102 66 92 46 Z" fill="url(#emblemCloud)" opacity="0.92" />
+          <path d="M 60 40 L 46 64 L 56 64 L 48 82 L 74 56 L 62 56 L 70 40 Z" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.5" stroke-linejoin="round" />
+        </svg>
+        <div class="brand__text">
+          <h1 class="brand__title">ANVIL</h1>
+          <p class="brand__tagline">Runbook &amp; how-to vault</p>
+        </div>
+      </header>
+
+      <nav class="rail__workspaces">
+        <div class="rail__labelrow">
+          <p class="rail__label">Workspaces</p>
+          <button type="button" class="ws-add" id="newWorkspaceBtn" title="Add a workspace">+ New</button>
+        </div>
+        <button type="button" class="ws-card ws-card--all" id="allWorkspacesBtn">
+          <span class="ws-card__icon" aria-hidden="true">&#128451;</span>
+          <span class="ws-card__name">All Workspaces</span>
+          <span class="ws-card__count" id="allWsCount">0</span>
+        </button>
+        <div class="ws-list" id="workspaceList"><!-- workspace cards injected --></div>
+      </nav>
+
+      <nav class="rail__filters">
+        <p class="rail__label">Subsystems &amp; Tags</p>
+        <div class="tag-filters" id="tagFilters"><!-- subsystem + tag pills injected --></div>
+      </nav>
+
+      <div class="rail__utility">
+        <div class="backup-status" id="backupStatus">
+          <span class="backup-status__dot"></span>
+          <span class="backup-status__text" id="backupStatusText">0 runbooks stored</span>
+        </div>
+        <div class="rail__actions">
+          <button type="button" class="btn btn--ghost" id="exportBtn" title="Download a JSON backup">Export JSON</button>
+          <button type="button" class="btn btn--ghost" id="importBtn" title="Restore from a JSON backup">Import JSON</button>
+        </div>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+          <span class="theme-toggle__icon theme-toggle__icon--storm" aria-hidden="true">&#9889;</span>
+          <span class="theme-toggle__label" id="themeToggleLabel">Storm</span>
+        </button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden />
+      </div>
+    </aside>
+
+    <!-- ============ MIDDLE COLUMN (Runbook Deck) ============ -->
+    <section class="deck" id="deck">
+      <div class="deck__top">
+        <div class="search">
+          <span class="search__icon" aria-hidden="true">&#128269;</span>
+          <input type="search" id="searchInput" class="search__input" placeholder="Search runbooks&hellip;  ( / )" autocomplete="off" />
+          <kbd class="search__kbd">/</kbd>
+        </div>
+        <button type="button" class="btn btn--beacon" id="newBtn">
+          <span aria-hidden="true">+</span> New How-To
+        </button>
+      </div>
+      <div class="deck__meta">
+        <span id="deckCount">0 runbooks</span>
+        <button type="button" class="scope-toggle" id="scopeToggle" title="Toggle search scope (Alt+Enter)">Scope: Workspace</button>
+      </div>
+      <div class="deck__list" id="deckList"><!-- cards injected --></div>
+    </section>
+
+    <!-- ============ RIGHT PANE (Execution Canvas) ============ -->
+    <section class="canvas" id="canvas">
+      <!-- Reading view -->
+      <article class="reader" id="reader" hidden>
+        <header class="reader__head">
+          <div class="reader__titlebar">
+            <h2 class="reader__title" id="readerTitle"></h2>
+            <div class="reader__actions">
+              <button type="button" class="btn btn--ghost" id="editBtn">Edit</button>
+              <button type="button" class="btn btn--ghost" id="copyBtn">Copy Plaintext</button>
+              <button type="button" class="btn btn--kiosk" id="kioskBtn">Workbench Mode</button>
+            </div>
+          </div>
+          <div class="reader__submeta">
+            <span class="verified-badge" id="readerVerified"></span>
+            <span class="reader__timestamp" id="readerTimestamp"></span>
+            <div class="reader__tags" id="readerTags"></div>
+          </div>
+        </header>
+
+        <section class="callout callout--tools" id="toolsCallout">
+          <h3 class="callout__title"><span aria-hidden="true">&#128736;</span> Prerequisites &amp; Tools</h3>
+          <ul class="tools-list" id="toolsList"></ul>
+        </section>
+
+        <section class="steps">
+          <div class="steps__head">
+            <h3 class="steps__title">Steps</h3>
+            <button type="button" class="btn btn--tiny" id="resetChecksBtn" title="Clear checked steps">Reset checks</button>
+          </div>
+          <ol class="steps__list" id="stepsList"></ol>
+        </section>
+
+        <section class="callout callout--gotchas" id="gotchasCallout">
+          <h3 class="callout__title"><span aria-hidden="true">&#9888;&#65039;</span> Pitfalls &amp; Gotchas</h3>
+          <ul class="gotchas-list" id="gotchasList"></ul>
+        </section>
+
+        <button type="button" class="kiosk-exit" id="kioskExit" hidden>Exit Workbench Mode</button>
+      </article>
+
+      <!-- Editor view -->
+      <form class="editor" id="editor" hidden>
+        <header class="editor__head">
+          <h2 class="editor__title" id="editorHeading">New How-To</h2>
+          <div class="editor__actions">
+            <button type="button" class="btn btn--ghost" id="cancelBtn">Cancel</button>
+            <button type="submit" class="btn btn--beacon" id="saveBtn">Save <kbd>&#8984;S</kbd></button>
+          </div>
+        </header>
+
+        <div class="field-row field-row--even">
+          <label class="field">
+            <span class="field__label">Workspace</span>
+            <select id="fWorkspace" class="field__input"></select>
+          </label>
+          <label class="field">
+            <span class="field__label">Subsystem / Category</span>
+            <input type="text" id="fSubsystem" class="field__input" list="subsystemOptions" placeholder="Electrical, Suspension, Living Room&hellip;" autocomplete="off" />
+            <datalist id="subsystemOptions"></datalist>
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Title</span>
+          <input type="text" id="fTitle" class="field__input" placeholder="e.g. Reset the garage door opener code" required />
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span class="field__label">Tags <small>(comma separated)</small></span>
+            <input type="text" id="fTags" class="field__input mono" placeholder="garage, home, automotive" />
+          </label>
+          <label class="field field--narrow">
+            <span class="field__label">Last Verified</span>
+            <input type="date" id="fVerified" class="field__input mono" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Tools Needed <small>(one per line)</small></span>
+          <textarea id="fTools" class="field__input mono" rows="3" placeholder="Stepladder&#10;10mm socket&#10;Opener PIN: 1234"></textarea>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Steps <small>(one per line &mdash; append an image with | https://&hellip; or | data:image&hellip;)</small></span>
+          <textarea id="fSteps" class="field__input" rows="8" placeholder="Open the opener cover&#10;Press and hold the LEARN button | https://example.com/learn.jpg&#10;Enter the new code on the keypad"></textarea>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Pitfalls &amp; Gotchas <small>(one per line)</small></span>
+          <textarea id="fGotchas" class="field__input" rows="3" placeholder="The LEARN light only stays on for 30 seconds&#10;Wrong dip-switch order wipes all remotes"></textarea>
+        </label>
+
+        <div class="editor__footer">
+          <button type="button" class="btn btn--danger" id="deleteBtn" hidden>Delete Runbook</button>
+        </div>
+      </form>
+
+      <!-- Empty state -->
+      <div class="empty" id="emptyState">
+        <svg class="empty__emblem" viewBox="0 0 120 90" aria-hidden="true">
+          <path d="M 10 34 Q 30 16 58 24 Q 60 10 76 20 Q 100 14 112 34 Q 118 44 104 50 L 18 50 Q 4 44 10 34 Z" fill="currentColor" opacity="0.25" />
+          <path d="M 60 44 L 46 68 L 56 68 L 48 86 L 74 60 L 62 60 L 70 44 Z" fill="currentColor" opacity="0.5" />
+        </svg>
+        <h2 class="empty__title">Select a runbook</h2>
+        <p class="empty__text">Pick a how-to from the deck, or forge a new one with <strong>+ New How-To</strong>.</p>
+      </div>
+    </section>
+  </div>
+  </div>
+
+  <!-- Lightbox for expanded step images -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button type="button" class="lightbox__close" id="lightboxClose" aria-label="Close image">&times;</button>
+    <img class="lightbox__img" id="lightboxImg" alt="Step detail" />
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="app.js?v=2026.10.18.1"></script>
+</body>
+</html>

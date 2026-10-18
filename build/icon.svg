@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Anvil">
+  <defs>
+    <linearGradient id="anvilSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="0.55" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="anvilCloud" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+    <radialGradient id="anvilBeacon" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fffbeb"/>
+      <stop offset="40%" stop-color="#fbbf24" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- App Icon Background Tile -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#anvilSky)"/>
+
+  <!-- Beacon glow behind the anvil's flat top -->
+  <circle cx="256" cy="150" r="150" fill="url(#anvilBeacon)" opacity="0.65"/>
+
+  <!-- Cumulonimbus Incus (flat-topped anvil cloud) -->
+  <!-- Flat spreading anvil top -->
+  <path d="M 70 158
+           Q 120 118 200 128
+           Q 256 92 320 126
+           Q 404 112 452 162
+           Q 472 182 448 196
+           L 92 196
+           Q 58 182 70 158 Z"
+        fill="url(#anvilCloud)"/>
+  <!-- Billowing tower body -->
+  <path d="M 150 196
+           Q 128 250 160 300
+           Q 150 352 196 372
+           Q 236 404 300 384
+           Q 364 384 368 320
+           Q 404 284 376 234
+           Q 380 210 360 196 Z"
+        fill="url(#anvilCloud)" opacity="0.94"/>
+
+  <!-- Lightning / beacon bolt -->
+  <path d="M 268 210 L 224 300 L 258 300 L 232 372 L 316 268 L 276 268 L 300 210 Z"
+        fill="#fbbf24" stroke="#f59e0b" stroke-width="4" stroke-linejoin="round"/>
+</svg>
