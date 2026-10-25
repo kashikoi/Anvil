@@ -6,13 +6,13 @@
   <title>Anvil</title>
   <meta name="description" content="A local-first personal runbook and procedural how-to knowledge base." />
   <meta name="theme-color" content="#0f172a" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.10.18.2" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.10.18.2" />
-  <link rel="manifest" href="manifest.webmanifest?v=2026.10.18.2" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.10.25.1" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.10.25.1" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.10.25.1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.10.18.2" />
+  <link rel="stylesheet" href="styles.css?v=2026.10.25.1" />
   <script>
     // Resolve atmosphere before first paint to prevent a flash of the wrong theme.
     try {
@@ -84,8 +84,8 @@
       <!-- horizon haze -->
       <rect x="0" y="470" width="1600" height="150" fill="url(#hazeGrad)" opacity="0.5" />
 
-      <!-- distant buttes / badlands -->
-      <path fill="url(#butteGrad)" opacity="0.7" d="M -10 548 L 180 548 L 212 508 L 360 508 L 396 548 L 640 548 L 690 514 L 860 514 L 902 548 L 1180 548 L 1212 502 L 1380 502 L 1412 548 L 1610 548 L 1610 640 L -10 640 Z" />
+      <!-- distant buttes / badlands (kept off-center so they don't read as a volcano under the cloud) -->
+      <path fill="url(#butteGrad)" opacity="0.7" d="M -10 548 L 180 548 L 212 508 L 360 508 L 396 548 L 1180 548 L 1212 502 L 1380 502 L 1412 548 L 1610 548 L 1610 640 L -10 640 Z" />
 
       <!-- mid grassland -->
       <path fill="url(#grassGrad)" d="M -10 596 C 300 556 600 584 820 574 C 1080 561 1320 590 1610 570 L 1610 912 L -10 912 Z" />
@@ -336,8 +336,35 @@
         </div>
         <div class="settings-divider"></div>
         <div class="settings-group">
+          <div class="settings-row__label">Encrypted Cloud Sync</div>
+          <div class="settings-row__desc">Create or enter a recovery phrase. Anvil encrypts your backup in this browser before it ever leaves &mdash; the server only ever sees ciphertext and cannot recover lost words.</div>
+          <div class="cloud-data-field">
+            <span class="cloud-data-field__label">Recovery phrase</span>
+            <span class="cloud-phrase-entry">
+              <input class="cloud-data-field__input" id="cloudPhrase" type="password" autocomplete="off" spellcheck="false" placeholder="sixteen recovery words" aria-label="Recovery phrase" />
+              <button type="button" class="cloud-phrase-entry__toggle" id="togglePhraseBtn" aria-pressed="false">Show</button>
+            </span>
+          </div>
+          <p class="cloud-phrase-output" id="cloudPhraseOut" hidden></p>
+          <label class="cloud-remember-option">
+            <input type="checkbox" id="rememberPhrase" />
+            <span>Remember on this device</span>
+          </label>
+          <div class="settings-actions settings-actions--compact">
+            <button type="button" class="btn btn--ghost" id="generatePhraseBtn">Create phrase</button>
+            <button type="button" class="btn btn--ghost" id="cloudSaveBtn">Save to cloud</button>
+            <button type="button" class="btn btn--ghost" id="cloudLoadBtn">Restore from cloud</button>
+          </div>
+          <p class="cloud-data-status" id="cloudStatus" aria-live="polite"></p>
+        </div>
+        <div class="settings-divider"></div>
+        <div class="settings-group">
+          <div class="settings-row__label">Data</div>
+          <div class="settings-row__desc">Load a sample set to explore, or wipe everything and start fresh.</div>
           <div class="settings-actions">
+            <button type="button" class="btn btn--ghost" id="randomizeBtn">Randomize data (demo)</button>
             <button type="button" class="btn btn--ghost" id="aboutBtn">About Anvil</button>
+            <button type="button" class="btn btn--danger" id="clearBtn">Clear all data</button>
           </div>
         </div>
       </div>
@@ -354,7 +381,7 @@
       </div>
       <div class="about-content">
         <p class="about-content__name">Anvil</p>
-        <p class="about-content__version" id="aboutVersion">Version 2026.10.18.2</p>
+        <p class="about-content__version" id="aboutVersion">Version 2026.10.25.1</p>
         <p class="about-content__description">A local-first runbook &amp; procedural how-to vault. Named after the Cumulonimbus Incus &mdash; the flat-topped anvil cloud.</p>
       </div>
     </div>
@@ -369,6 +396,6 @@
   <!-- Toast -->
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="app.js?v=2026.10.18.2"></script>
+  <script src="app.js?v=2026.10.25.1"></script>
 </body>
 </html>

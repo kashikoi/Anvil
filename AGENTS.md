@@ -19,13 +19,18 @@ this up in a new session, read this first.
 
 ## Data model (localStorage)
 - `anvil_cloud_runbooks` — `{ workspaces: [...], runbooks: [...] }`.
-  - workspace: `{ id, name, icon }`. Defaults: home, e82-build, workshop, tech.
+  - workspace: `{ id, name, icon }`. Default: a single empty `general` workspace.
   - runbook: `{ id, workspaceId, subsystem, title, tags[], toolsNeeded[], steps[],
     gotchas (string), lastVerified, updatedAt }`.
   - `steps` are strings; inline image via ` | <url|data-uri>` suffix (parsed by
     `parseStep`).
   - `load()` migrates a legacy top-level array into `{workspaces:defaults, runbooks}`.
-  - Seeds 2 sample runbooks (Genie garage door, BMW brake bleed) on first run.
+  - First run starts empty (no sample content). Settings → **Randomize data (demo)**
+    loads `demoData()` (4 workspaces, 4 runbooks); **Clear all data** wipes back to the
+    empty default. Both confirm first.
+  - Older builds auto-seeded the Genie/brake-bleed samples. `purgeLegacySeed()` runs once
+    (guarded by `anvil_cloud_seed_purged`) to drop those if still untouched, plus empty
+    legacy default workspaces; edited/user content is kept.
 - `anvil_cloud_theme` — `"storm"` (default) | `"day"`. Head script in index.html adds
   `html.day` before first paint to prevent FOUC.
 - `anvil_cloud_checks` — **sessionStorage** only; per-runbook step checkbox state.

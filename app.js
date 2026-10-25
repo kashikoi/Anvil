@@ -10,9 +10,43 @@
   const THEME_KEY = "anvil_cloud_theme";
   const ACTIVE_THEME_KEY = "anvil_cloud_active_theme"; // sessionStorage, resolved random pick
   const CHECKS_KEY = "anvil_cloud_checks"; // sessionStorage, per-runbook step checks
+  const SEED_PURGED_KEY = "anvil_cloud_seed_purged"; // one-time removal of pre-2026.10.25 auto-seeded samples
+  const REMEMBER_CLOUD_PHRASE_KEY = "anvil_cloud_phrase"; // localStorage, opt-in remembered phrase
 
-  const APP_VERSION = "2026.10.18.2";
+  const APP_VERSION = "2026.10.25.1";
   const THEMES = ["day", "twilight", "night"];
+
+  // ---------- Cloud sync / unified backup (shared Kashikoi suite worker) ----------
+  const CLOUD_SYNC_ENDPOINT = "https://nimbus-sync.nimbus-sync.workers.dev";
+  const CLOUD_SYNC_FORMAT = "kashikoi-encrypted-backup-v1";
+  const LEGACY_CLOUD_SYNC_FORMAT = "nimbus-encrypted-backup-v1";
+  const UNIFIED_BACKUP_SCHEMA = "kashikoi-app-backup-v1";
+  // The shared sync Worker only accepts envelopes tagged "Nimbus"/"Cumulus"; since every app
+  // reads/writes the same blob, Anvil tags it "Nimbus" so the PUT validates and the other apps
+  // can still decrypt it. The honest author is recorded separately in `writtenBy`.
+  const CLOUD_ENVELOPE_APP = "Nimbus";
+  const ACCEPTED_ENVELOPE_APPS = new Set(["Nimbus", "Cumulus", "Cirrus", "Stratus", "Anvil"]);
+  const RECOVERY_PHRASE_WORD_COUNT = 16;
+  const CLOUD_KDF_ITERATIONS = 600000;
+  const RECOVERY_WORDS = [
+    "anchor", "apricot", "arbor", "aurora", "basalt", "beacon", "birch", "bison",
+    "blossom", "boulder", "breeze", "canyon", "cedar", "cinder", "cirrus", "clay",
+    "clover", "cobalt", "comet", "coral", "cove", "crater", "crystal", "cumulus",
+    "current", "dawn", "delta", "dune", "ember", "evergreen", "fathom", "fern",
+    "fjord", "flint", "forge", "fossil", "galaxy", "garnet", "geyser", "glacier",
+    "granite", "grove", "harbor", "hazel", "heather", "horizon", "ivory", "jade",
+    "juniper", "kelp", "lagoon", "lantern", "lichen", "lilac", "lumen", "magma",
+    "maple", "marble", "meadow", "meridian", "mesa", "mica", "mist", "monsoon",
+    "moss", "nebula", "nectar", "oasis", "obsidian", "ocean", "onyx", "opal",
+    "orchard", "pebble", "petal", "pine", "pollen", "prairie", "quartz", "quill",
+    "rapids", "ravine", "reef", "ridge", "ripple", "river", "sable", "saffron",
+    "sage", "sandbar", "sapphire", "savanna", "sequoia", "shale", "shore", "sierra",
+    "slate", "solstice", "spruce", "storm", "summit", "tempest", "thicket", "thunder",
+    "tide", "timber", "topaz", "trellis", "tundra", "valley", "vapor", "verdant",
+    "vertex", "vista", "willow", "wisp", "zenith", "zephyr",
+  ];
+
+  let cloudDataDirty = false;
 
   // ---------- In-memory state ----------
   let db = { workspaces: [], runbooks: [] };
@@ -27,17 +61,21 @@
   const $ = (id) => document.getElementById(id);
   const el = {};
 
-  // ---------- Default workspaces + sample content ----------
+  // ---------- Default workspace (neutral starter — no sample content) ----------
   const DEFAULT_WORKSPACES = [
-    { id: "home", name: "Home & Property", icon: "🏠" },
-    { id: "e82-build", name: "BMW 128i Race Build", icon: "🏎️" },
-    { id: "workshop", name: "Shop & Equipment", icon: "🛠️" },
-    { id: "tech", name: "Software & Systems", icon: "💻" },
+    { id: "general", name: "General", icon: "📁" },
   ];
 
-  function seedRunbooks() {
+  // Rich sample content, only loaded via the "Randomize data" button.
+  function demoData() {
     const now = new Date().toISOString();
-    return [
+    const workspaces = [
+      { id: "home", name: "Home & Property", icon: "🏠" },
+      { id: "e82-build", name: "BMW 128i Race Build", icon: "🏎️" },
+      { id: "workshop", name: "Shop & Equipment", icon: "🛠️" },
+      { id: "tech", name: "Software & Systems", icon: "💻" },
+    ];
+    const runbooks = [
       {
         id: uid(),
         workspaceId: "home",
@@ -81,8 +119,48 @@
         lastVerified: "2026-09-20",
         updatedAt: now,
       },
+      {
+        id: uid(),
+        workspaceId: "workshop",
+        subsystem: "Air Tools",
+        title: "Drain & Service the Shop Air Compressor",
+        tags: ["compressor", "maintenance", "shop"],
+        toolsNeeded: ["Hearing protection", "Shop rag", "Compressor oil (if non-oilless)"],
+        steps: [
+          "Shut off the compressor and let tank pressure bleed to ~20 psi.",
+          "Open the tank drain valve underneath and let condensate + remaining air blow out fully.",
+          "Close the drain, then check the oil sight glass and top up to the dot if low.",
+          "Wipe the intake filter and inspect the belt guard for cracks.",
+          "Restart, let it build to cut-out pressure, and confirm it shuts off automatically.",
+        ],
+        gotchas:
+          "Always drain the tank with SOME pressure left — it pushes the water out. A fully depressurized tank just dribbles.\nStanding water rusts the tank from the inside; drain after every heavy-use day.",
+        lastVerified: "2026-08-14",
+        updatedAt: now,
+      },
+      {
+        id: uid(),
+        workspaceId: "tech",
+        subsystem: "Networking",
+        title: "Reset the Home Router to a Known-Good Config",
+        tags: ["network", "router", "home"],
+        toolsNeeded: ["Paperclip", "Phone with saved admin password", "Backup config file"],
+        steps: [
+          "Download a fresh config backup from the admin page before touching anything.",
+          "Hold the recessed reset button for 10 seconds until the lights cycle.",
+          "Reconnect to the default SSID printed on the label.",
+          "Restore your saved config file, or re-enter Wi-Fi name, password, and port forwards.",
+          "Verify internet, then confirm port forwards with an external port checker.",
+        ],
+        gotchas:
+          "A factory reset wipes port forwards and static DHCP leases — have the backup FIRST.\nThe default admin password is on the label; change it again immediately after restore.",
+        lastVerified: "2026-07-30",
+        updatedAt: now,
+      },
     ];
+    return { workspaces, runbooks };
   }
+
 
   function uid() {
     return "rb_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
@@ -119,12 +197,41 @@
           : DEFAULT_WORKSPACES.slice(),
         runbooks: parsed.runbooks.map(normalizeRunbook),
       };
+      if (!localStorage.getItem(SEED_PURGED_KEY)) {
+        if (purgeLegacySeed()) save();
+        localStorage.setItem(SEED_PURGED_KEY, "1");
+      }
       return;
     }
 
-    // First run — seed.
-    db = { workspaces: DEFAULT_WORKSPACES.slice(), runbooks: seedRunbooks() };
+    // First run — start empty with a single neutral workspace (no sample content).
+    db = { workspaces: DEFAULT_WORKSPACES.slice(), runbooks: [] };
+    localStorage.setItem(SEED_PURGED_KEY, "1");
     save();
+  }
+
+  // Older builds auto-seeded sample workspaces + runbooks on first run. Strip any of
+  // those that are still untouched so existing installs also start clean; anything the
+  // user created or edited is kept.
+  function purgeLegacySeed() {
+    const demo = demoData();
+    const legacyRunbooks = demo.runbooks.filter((r) =>
+      r.title === "Genie Garage Door Opener: Reprogram Code / Signal" ||
+      r.title === "Bleed Brakes & Flush Fluid (Track Prep)"
+    );
+    const sig = (r) => JSON.stringify([r.workspaceId, r.subsystem, r.title, r.steps, r.toolsNeeded, r.gotchas]);
+    const legacySigs = new Set(legacyRunbooks.map(sig));
+    const beforeRunbooks = db.runbooks.length;
+    db.runbooks = db.runbooks.filter((r) => !legacySigs.has(sig(r)));
+
+    const legacyWs = new Map(demo.workspaces.map((w) => [w.id, w.name]));
+    const beforeWs = db.workspaces.length;
+    db.workspaces = db.workspaces.filter((w) =>
+      !(legacyWs.get(w.id) === w.name && !db.runbooks.some((r) => r.workspaceId === w.id))
+    );
+    if (!db.workspaces.length) db.workspaces = DEFAULT_WORKSPACES.slice();
+
+    return db.runbooks.length !== beforeRunbooks || db.workspaces.length !== beforeWs;
   }
 
   function normalizeRunbook(r) {
@@ -157,6 +264,7 @@
     } catch (e) {
       toast("Could not save — storage may be full.");
     }
+    cloudDataDirty = true;
     updateBackupStatus();
   }
 
@@ -264,6 +372,9 @@
     el.workspaceList.innerHTML = "";
     db.workspaces.forEach((w) => {
       const count = db.runbooks.filter((r) => r.workspaceId === w.id).length;
+      const row = document.createElement("div");
+      row.className = "ws-row";
+
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "ws-card" + (activeWorkspaceId === w.id ? " is-active" : "");
@@ -273,7 +384,33 @@
         `<span class="ws-card__name">${escapeHtml(w.name)}</span>` +
         `<span class="ws-card__count">${count}</span>`;
       btn.addEventListener("click", () => selectWorkspace(w.id));
-      el.workspaceList.appendChild(btn);
+
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "ws-row__act";
+      edit.title = "Rename workspace";
+      edit.setAttribute("aria-label", "Rename " + w.name);
+      edit.textContent = "✏️";
+      edit.addEventListener("click", (e) => {
+        e.stopPropagation();
+        renameWorkspace(w.id);
+      });
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "ws-row__act ws-row__act--danger";
+      del.title = "Delete workspace";
+      del.setAttribute("aria-label", "Delete " + w.name);
+      del.textContent = "🗑";
+      del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteWorkspace(w.id);
+      });
+
+      row.appendChild(btn);
+      row.appendChild(edit);
+      row.appendChild(del);
+      el.workspaceList.appendChild(row);
     });
   }
 
@@ -712,49 +849,363 @@
     toast("Workspace added.");
   }
 
-  // ---------- Export / Import ----------
-  function exportJSON() {
-    const blob = new Blob([JSON.stringify(db, null, 2)], { type: "application/json" });
+  function renameWorkspace(id) {
+    const w = workspaceById(id);
+    if (!w) return;
+    const name = (prompt("Rename workspace:", w.name) || "").trim();
+    if (!name) return;
+    const icon = (prompt("Emoji icon:", w.icon || "📁") || "📁").trim() || "📁";
+    w.name = name;
+    w.icon = icon;
+    save();
+    renderAll();
+    toast("Workspace updated.");
+  }
+
+  function deleteWorkspace(id) {
+    const w = workspaceById(id);
+    if (!w) return;
+    if (db.workspaces.length <= 1) {
+      toast("Keep at least one workspace.");
+      return;
+    }
+    const count = db.runbooks.filter((r) => r.workspaceId === id).length;
+    const msg = count
+      ? `Delete "${w.name}" and its ${count} runbook${count === 1 ? "" : "s"}? This cannot be undone.`
+      : `Delete empty workspace "${w.name}"?`;
+    if (!confirm(msg)) return;
+    db.runbooks.filter((r) => r.workspaceId === id).forEach((r) => clearChecks(r.id));
+    db.runbooks = db.runbooks.filter((r) => r.workspaceId !== id);
+    db.workspaces = db.workspaces.filter((x) => x.id !== id);
+    if (activeWorkspaceId === id) activeWorkspaceId = null;
+    save();
+    activeSubsystem = null;
+    activeTag = null;
+    renderAll();
+    showEmpty();
+    toast("Workspace deleted.");
+  }
+
+  // ---------- Unified backup (Kashikoi suite schema) ----------
+  function createAnvilBackupData() {
+    return {
+      version: 1,
+      appName: "Anvil",
+      exportedAt: new Date().toISOString(),
+      theme: getThemePref(),
+      workspaces: db.workspaces,
+      runbooks: db.runbooks,
+    };
+  }
+
+  // Preserves every other app's slice so saving from Anvil never clobbers Nimbus/Cumulus/Cirrus/Stratus.
+  function getExistingBackupApps(existingBackup) {
+    if (!existingBackup || typeof existingBackup !== "object") return {};
+    if (existingBackup.schema === UNIFIED_BACKUP_SCHEMA && existingBackup.apps && typeof existingBackup.apps === "object") {
+      return Object.assign({}, existingBackup.apps);
+    }
+    if (existingBackup.appName === "Nimbus" || Array.isArray(existingBackup.tabs)) return { nimbus: existingBackup };
+    if (existingBackup.appName === "Cumulus" || Array.isArray(existingBackup.accounts)) return { cumulus: existingBackup };
+    if (existingBackup.appName === "Cirrus" || Array.isArray(existingBackup.movies)) return { cirrus: existingBackup };
+    if (existingBackup.appName === "Stratus" || Array.isArray(existingBackup.stamps)) return { stratus: existingBackup };
+    if (existingBackup.appName === "Anvil" || Array.isArray(existingBackup.runbooks)) return { anvil: existingBackup };
+    return {};
+  }
+
+  // Preserve sibling apps' data (last-write-wins only for Anvil's own slice).
+  function createBackupData(existingBackup) {
+    const apps = getExistingBackupApps(existingBackup);
+    apps.anvil = createAnvilBackupData();
+    return {
+      schema: UNIFIED_BACKUP_SCHEMA,
+      version: 1,
+      appName: "Kashikoi Apps",
+      exportedAt: new Date().toISOString(),
+      apps,
+    };
+  }
+
+  function normalizeBackupData(data) {
+    if (!data || typeof data !== "object") throw new Error("Invalid format");
+    const anvil = data.schema === UNIFIED_BACKUP_SCHEMA && data.apps && data.apps.anvil ? data.apps.anvil : data;
+    if (!anvil || typeof anvil !== "object" || !Array.isArray(anvil.runbooks)) {
+      throw new Error("No Anvil data");
+    }
+    const workspaces = Array.isArray(anvil.workspaces) && anvil.workspaces.length
+      ? anvil.workspaces.filter((w) => w && typeof w.id === "string" && typeof w.name === "string")
+      : DEFAULT_WORKSPACES.slice();
+    return {
+      workspaces: workspaces.length ? workspaces : DEFAULT_WORKSPACES.slice(),
+      runbooks: anvil.runbooks.map(normalizeRunbook),
+      theme: typeof anvil.theme === "string" ? anvil.theme : null,
+    };
+  }
+
+  function applyRestoredData(imported, sourceLabel) {
+    const summary = `${imported.runbooks.length} runbook${imported.runbooks.length === 1 ? "" : "s"} across ${imported.workspaces.length} workspace${imported.workspaces.length === 1 ? "" : "s"}`;
+    if (!confirm(`Restore ${summary} from ${sourceLabel}? This replaces your current Anvil data.`)) return false;
+    db = { workspaces: imported.workspaces, runbooks: imported.runbooks };
+    if (imported.theme) setTheme(imported.theme);
+    save();
+    activeWorkspaceId = null;
+    activeSubsystem = null;
+    activeTag = null;
+    renderAll();
+    showEmpty();
+    return true;
+  }
+
+  function downloadBackup(obj, filename) {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "anvil-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    toast("Backup exported.");
+  }
+
+  // ---------- Export / Import (local JSON) ----------
+  function exportJSON() {
+    try {
+      downloadBackup(createBackupData(), "anvil-backup-" + new Date().toISOString().slice(0, 10) + ".json");
+      toast("Backup exported.");
+    } catch (e) {
+      toast("Export failed — stored data may be corrupted.");
+    }
   }
 
   function importJSON(file) {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(reader.result);
-        let next;
-        if (Array.isArray(parsed)) {
-          next = { workspaces: DEFAULT_WORKSPACES.slice(), runbooks: parsed };
-        } else if (parsed && Array.isArray(parsed.runbooks)) {
-          next = {
-            workspaces: Array.isArray(parsed.workspaces) && parsed.workspaces.length ? parsed.workspaces : DEFAULT_WORKSPACES.slice(),
-            runbooks: parsed.runbooks,
-          };
-        } else {
-          throw new Error("Unrecognized file shape");
-        }
-        if (!confirm(`Import ${next.runbooks.length} runbook(s)? This replaces your current data.`)) return;
-        db = { workspaces: next.workspaces, runbooks: next.runbooks.map(normalizeRunbook) };
-        save();
-        activeWorkspaceId = null;
-        activeSubsystem = null;
-        activeTag = null;
-        renderAll();
-        showEmpty();
-        toast("Backup imported.");
+        const imported = normalizeBackupData(JSON.parse(reader.result));
+        if (applyRestoredData(imported, "this backup")) toast("Backup imported.");
       } catch (e) {
-        toast("Import failed — invalid JSON.");
+        toast("Import failed — not a valid Anvil backup.");
       }
     };
     reader.readAsText(file);
   }
+
+  // ---------- Randomize / Clear ----------
+  function randomizeData() {
+    if (!confirm("Replace everything with a demo set of workspaces and runbooks? Export first if you want to keep your current data.")) return;
+    const demo = demoData();
+    db = { workspaces: demo.workspaces, runbooks: demo.runbooks.map(normalizeRunbook) };
+    save();
+    activeWorkspaceId = null;
+    activeSubsystem = null;
+    activeTag = null;
+    renderAll();
+    showEmpty();
+    closeSettings();
+    toast("Demo data loaded.");
+  }
+
+  function clearData() {
+    if (!confirm("Clear ALL workspaces and runbooks? This cannot be undone.")) return;
+    localStorage.removeItem(STORE_KEY);
+    sessionStorage.removeItem(CHECKS_KEY);
+    db = { workspaces: DEFAULT_WORKSPACES.slice(), runbooks: [] };
+    save();
+    activeWorkspaceId = null;
+    activeSubsystem = null;
+    activeTag = null;
+    renderAll();
+    showEmpty();
+    closeSettings();
+    toast("All data cleared.");
+  }
+
+  // ---------- Encrypted cloud sync (zero-knowledge, shared worker) ----------
+  function getCloudPhrase() {
+    return el.cloudPhrase ? el.cloudPhrase.value.trim().replace(/\s+/g, " ") : "";
+  }
+  function markCloudDataDirty() {
+    cloudDataDirty = true;
+  }
+  function setCloudStatus(msg, kind) {
+    if (!el.cloudStatus) return;
+    el.cloudStatus.textContent = msg || "";
+    el.cloudStatus.className = "cloud-data-status" + (kind ? " cloud-data-status--" + kind : "");
+  }
+  function createRecoveryPhrase() {
+    const idx = new Uint32Array(RECOVERY_PHRASE_WORD_COUNT);
+    crypto.getRandomValues(idx);
+    return [...idx].map((n) => RECOVERY_WORDS[n % RECOVERY_WORDS.length]).join(" ");
+  }
+  function generateCloudPhrase() {
+    const phrase = createRecoveryPhrase();
+    el.cloudPhrase.value = phrase;
+    el.cloudPhrase.type = "text";
+    if (el.togglePhraseBtn) {
+      el.togglePhraseBtn.textContent = "Hide";
+      el.togglePhraseBtn.setAttribute("aria-pressed", "true");
+    }
+    if (el.cloudPhraseOut) {
+      el.cloudPhraseOut.hidden = false;
+      el.cloudPhraseOut.textContent = "Write these 16 words down. They are the ONLY key to your cloud backup — they can't be recovered.";
+    }
+    saveRememberedPhrase();
+    setCloudStatus("New recovery phrase created. Save to cloud to use it.", "info");
+  }
+  function togglePhraseVisibility() {
+    if (!el.cloudPhrase) return;
+    const show = el.cloudPhrase.type === "password";
+    el.cloudPhrase.type = show ? "text" : "password";
+    el.togglePhraseBtn.textContent = show ? "Hide" : "Show";
+    el.togglePhraseBtn.setAttribute("aria-pressed", String(show));
+  }
+  function saveRememberedPhrase() {
+    if (!el.rememberPhrase) return;
+    if (el.rememberPhrase.checked && getCloudPhrase()) {
+      localStorage.setItem(REMEMBER_CLOUD_PHRASE_KEY, getCloudPhrase());
+    } else if (!el.rememberPhrase.checked) {
+      localStorage.removeItem(REMEMBER_CLOUD_PHRASE_KEY);
+    }
+  }
+  function loadRememberedPhrase() {
+    const saved = localStorage.getItem(REMEMBER_CLOUD_PHRASE_KEY) || "";
+    if (!saved || !el.cloudPhrase) return;
+    el.cloudPhrase.value = saved;
+    if (el.rememberPhrase) el.rememberPhrase.checked = true;
+  }
+
+  function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function base64ToArrayBuffer(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+  async function sha256Hex(value) {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  function getCloudSyncKey(phrase) {
+    return sha256Hex("kashikoi-cloud-sync-v1:" + phrase);
+  }
+  async function deriveCloudKey(phrase, salt) {
+    const phraseKey = await crypto.subtle.importKey("raw", new TextEncoder().encode(phrase), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", hash: "SHA-256", salt, iterations: CLOUD_KDF_ITERATIONS },
+      phraseKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"],
+    );
+  }
+  async function encryptCloudBackup(phrase, backupData) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveCloudKey(phrase, salt);
+    const plaintext = new TextEncoder().encode(JSON.stringify(backupData || createBackupData()));
+    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
+    return {
+      app: CLOUD_ENVELOPE_APP,
+      writtenBy: "Anvil",
+      format: CLOUD_SYNC_FORMAT,
+      updatedAt: new Date().toISOString(),
+      kdf: { name: "PBKDF2", hash: "SHA-256", iterations: CLOUD_KDF_ITERATIONS, salt: arrayBufferToBase64(salt) },
+      cipher: { name: "AES-GCM", iv: arrayBufferToBase64(iv) },
+      payload: arrayBufferToBase64(encrypted),
+    };
+  }
+  async function decryptCloudBackup(phrase, envelope) {
+    if (!envelope || typeof envelope !== "object" || !ACCEPTED_ENVELOPE_APPS.has(envelope.app) ||
+        (envelope.format !== CLOUD_SYNC_FORMAT && envelope.format !== LEGACY_CLOUD_SYNC_FORMAT) ||
+        !envelope.kdf || !envelope.cipher || typeof envelope.payload !== "string") {
+      throw new Error("Invalid envelope");
+    }
+    const salt = new Uint8Array(base64ToArrayBuffer(envelope.kdf.salt));
+    const iv = new Uint8Array(base64ToArrayBuffer(envelope.cipher.iv));
+    const encrypted = base64ToArrayBuffer(envelope.payload);
+    const key = await deriveCloudKey(phrase, salt);
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encrypted);
+    return JSON.parse(new TextDecoder().decode(decrypted));
+  }
+  async function fetchEncryptedBackupAtKey(syncKey) {
+    const bust = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const response = await fetch(`${CLOUD_SYNC_ENDPOINT}/sync/${syncKey}?t=${bust}`, { cache: "no-store" });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    return response.json();
+  }
+  async function createMergedCloudBackup(phrase) {
+    const syncKey = await getCloudSyncKey(phrase);
+    let existingBackup = null;
+    const envelope = await fetchEncryptedBackupAtKey(syncKey);
+    if (envelope) {
+      try {
+        existingBackup = await decryptCloudBackup(phrase, envelope);
+      } catch (e) {
+        throw new Error("decrypt-existing");
+      }
+    }
+    return { syncKey, backup: createBackupData(existingBackup) };
+  }
+
+  async function saveCloudData() {
+    const phrase = getCloudPhrase();
+    if (!phrase) {
+      setCloudStatus("Enter or create a recovery phrase first.", "error");
+      return;
+    }
+    setCloudStatus("Encrypting and saving cloud backup…", "info");
+    try {
+      const merged = await createMergedCloudBackup(phrase);
+      const envelope = await encryptCloudBackup(phrase, merged.backup);
+      const response = await fetch(`${CLOUD_SYNC_ENDPOINT}/sync/${merged.syncKey}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(envelope),
+      });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      cloudDataDirty = false;
+      saveRememberedPhrase();
+      setCloudStatus("Saved to cloud. Use the same phrase to restore on another device.", "success");
+    } catch (error) {
+      if (error && error.message === "decrypt-existing") {
+        setCloudStatus("A different cloud backup exists for this phrase and couldn't be decrypted. Check the phrase.", "error");
+      } else {
+        setCloudStatus("Could not save to cloud. Your local Anvil data is still safe here.", "error");
+      }
+    }
+  }
+
+  async function loadCloudData() {
+    const phrase = getCloudPhrase();
+    if (!phrase) {
+      setCloudStatus("Enter your recovery phrase first.", "error");
+      return;
+    }
+    setCloudStatus("Loading encrypted cloud backup…", "info");
+    try {
+      const syncKey = await getCloudSyncKey(phrase);
+      const envelope = await fetchEncryptedBackupAtKey(syncKey);
+      if (!envelope) {
+        setCloudStatus("No cloud backup exists for this phrase yet. Save from your first device first.", "error");
+        return;
+      }
+      const data = await decryptCloudBackup(phrase, envelope);
+      const imported = normalizeBackupData(data);
+      saveRememberedPhrase();
+      if (applyRestoredData(imported, "encrypted cloud sync")) {
+        setCloudStatus("Restored from cloud.", "success");
+      } else {
+        setCloudStatus("Cloud restore cancelled.", "info");
+      }
+    } catch (error) {
+      setCloudStatus("Could not decrypt cloud backup. Check the phrase or try again later.", "error");
+    }
+  }
+
 
   // ---------- Copy plaintext ----------
   function copyPlaintext() {
@@ -883,6 +1334,17 @@
       e.target.value = "";
     });
 
+    // Cloud sync
+    if (el.generatePhraseBtn) el.generatePhraseBtn.addEventListener("click", generateCloudPhrase);
+    if (el.togglePhraseBtn) el.togglePhraseBtn.addEventListener("click", togglePhraseVisibility);
+    if (el.cloudSaveBtn) el.cloudSaveBtn.addEventListener("click", saveCloudData);
+    if (el.cloudLoadBtn) el.cloudLoadBtn.addEventListener("click", loadCloudData);
+    if (el.rememberPhrase) el.rememberPhrase.addEventListener("change", saveRememberedPhrase);
+
+    // Data management
+    if (el.randomizeBtn) el.randomizeBtn.addEventListener("click", randomizeData);
+    if (el.clearBtn) el.clearBtn.addEventListener("click", clearData);
+
     // Search
     el.searchInput.addEventListener("input", () => {
       searchQuery = el.searchInput.value;
@@ -949,6 +1411,8 @@
       "workspaceList", "allWorkspacesBtn", "allWsCount", "newWorkspaceBtn", "tagFilters",
       "backupStatusText", "exportBtn", "importBtn", "importFile",
       "settingsBtn", "settingsModal", "aboutModal", "themePicker", "appVersion", "aboutVersion", "aboutBtn",
+      "cloudPhrase", "togglePhraseBtn", "cloudPhraseOut", "rememberPhrase", "generatePhraseBtn",
+      "cloudSaveBtn", "cloudLoadBtn", "cloudStatus", "randomizeBtn", "clearBtn",
       "searchInput", "scopeToggle", "newBtn", "deckCount", "deckList",
       "reader", "readerTitle", "readerVerified", "readerTimestamp", "readerTags",
       "toolsCallout", "toolsList", "stepsList", "resetChecksBtn", "gotchasCallout", "gotchasList",
@@ -966,6 +1430,7 @@
     bind();
     initVersion();
     updateThemePicker();
+    loadRememberedPhrase();
     renderAll();
     showEmpty();
   });

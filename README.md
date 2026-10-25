@@ -29,6 +29,7 @@ Workspace (Domain) → Subsystem (Category) → Runbook (Card).
 - **Workbench (Kiosk) mode:** collapses the rail + deck, goes full width, and enlarges type ~20% for hands-busy reading.
 - **Glass editor:** Workspace dropdown + Subsystem autocomplete, tags, tools, steps, gotchas. `Cmd/Ctrl+S` saves.
 - **Dual theme:** Storm/Dusk (default) and Daylight Sky, resolved before first paint to avoid FOUC.
+- **Starts empty:** no sample content on first run. Settings → **Randomize data (demo)** loads a sample set to explore; **Clear all data** wipes everything back to a blank vault.
 
 ## Files
 `index.html`, `styles.css`, `app.js`, `icon.svg`, `manifest.webmanifest`.
