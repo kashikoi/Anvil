@@ -13,7 +13,7 @@
   const SEED_PURGED_KEY = "anvil_cloud_seed_purged"; // one-time removal of pre-2026.10.25 auto-seeded samples
   const REMEMBER_CLOUD_PHRASE_KEY = "anvil_cloud_phrase"; // localStorage, opt-in remembered phrase
 
-  const APP_VERSION = "2026.10.25.1";
+  const APP_VERSION = "2026.10.25.2";
   const THEMES = ["day", "twilight", "night"];
 
   // ---------- Cloud sync / unified backup (shared Kashikoi suite worker) ----------
@@ -500,16 +500,42 @@
     return btn;
   }
 
+  function setSearch(value) {
+    searchQuery = value || "";
+    if (el.searchInput.value !== searchQuery) el.searchInput.value = searchQuery;
+    const has = !!searchQuery.trim();
+    el.searchClearBtn.hidden = !has;
+    el.searchKbd.hidden = has;
+    renderDeck();
+  }
+
   function renderDeck() {
     const list = filteredRunbooks();
     el.deckCount.textContent = `${list.length} runbook${list.length === 1 ? "" : "s"}`;
     el.deckList.innerHTML = "";
 
     if (!list.length) {
-      const empty = document.createElement("p");
-      empty.className = "card__preview";
-      empty.style.padding = "12px";
-      empty.textContent = "No runbooks match. Try a different filter or forge a new how-to.";
+      const empty = document.createElement("div");
+      empty.className = "deck-empty";
+      const q = searchQuery.trim();
+      const msg = document.createElement("p");
+      msg.className = "deck-empty__text";
+      if (q) {
+        msg.textContent = `No runbooks match “${q}”${!searchGlobal && activeWorkspaceId ? " in this workspace" : ""}.`;
+      } else if (activeSubsystem || activeTag) {
+        msg.textContent = "No runbooks match this filter.";
+      } else {
+        msg.textContent = "No runbooks here yet. Forge a new how-to.";
+      }
+      empty.appendChild(msg);
+      if (q) {
+        const clear = document.createElement("button");
+        clear.type = "button";
+        clear.className = "btn btn--tiny";
+        clear.textContent = "Clear search";
+        clear.addEventListener("click", () => setSearch(""));
+        empty.appendChild(clear);
+      }
       el.deckList.appendChild(empty);
       return;
     }
@@ -1346,20 +1372,20 @@
     if (el.clearBtn) el.clearBtn.addEventListener("click", clearData);
 
     // Search
-    el.searchInput.addEventListener("input", () => {
-      searchQuery = el.searchInput.value;
-      renderDeck();
-    });
+    el.searchInput.addEventListener("input", () => setSearch(el.searchInput.value));
     el.searchInput.addEventListener("keydown", (e) => {
       if (e.altKey && e.key === "Enter") {
         e.preventDefault();
         toggleScope();
       } else if (e.key === "Escape") {
-        el.searchInput.value = "";
-        searchQuery = "";
-        renderDeck();
+        setSearch("");
       }
     });
+    el.searchClearBtn.addEventListener("click", () => {
+      setSearch("");
+      el.searchInput.focus();
+    });
+    if (el.cloudPhraseForm) el.cloudPhraseForm.addEventListener("submit", (e) => e.preventDefault());
 
     // Breadcrumb dropdowns
     el.wsCrumbBtn.addEventListener("click", (e) => {
@@ -1413,7 +1439,7 @@
       "settingsBtn", "settingsModal", "aboutModal", "themePicker", "appVersion", "aboutVersion", "aboutBtn",
       "cloudPhrase", "togglePhraseBtn", "cloudPhraseOut", "rememberPhrase", "generatePhraseBtn",
       "cloudSaveBtn", "cloudLoadBtn", "cloudStatus", "randomizeBtn", "clearBtn",
-      "searchInput", "scopeToggle", "newBtn", "deckCount", "deckList",
+      "searchInput", "searchKbd", "searchClearBtn", "cloudPhraseForm", "scopeToggle", "newBtn", "deckCount", "deckList",
       "reader", "readerTitle", "readerVerified", "readerTimestamp", "readerTags",
       "toolsCallout", "toolsList", "stepsList", "resetChecksBtn", "gotchasCallout", "gotchasList",
       "editBtn", "copyBtn", "kioskBtn", "kioskExit",
@@ -1426,6 +1452,8 @@
   // ---------- Init ----------
   document.addEventListener("DOMContentLoaded", () => {
     cacheEls();
+    // Browsers can restore/autofill a stale value into the search box; always start unfiltered.
+    el.searchInput.value = "";
     load();
     bind();
     initVersion();

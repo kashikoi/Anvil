@@ -903,6 +903,38 @@ html.day .about-content__version { color: var(--beacon); }
   border: 1px solid var(--glass-border);
   color: var(--ink-faint);
 }
+.search__input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.search__clear {
+  position: absolute;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  background: var(--glass-hi);
+  color: var(--ink-soft);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.search__clear:hover { color: var(--ink); border-color: var(--beacon); }
+.deck-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+}
+.deck-empty__text {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--ink-faint);
+  overflow-wrap: anywhere;
+}
 .deck__meta {
   display: flex;
   align-items: center;
